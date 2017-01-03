@@ -1,7 +1,6 @@
 /*
 ESP8266 MQTT conection
 Use of the pubsub library
-TODO: publish execute command, not posible with more than one command (¿interrupt? ¿servo?)
 */
 
 /*
@@ -31,7 +30,7 @@ const char* ssid = ".....";
 const char* password = ".....";
 */
 // mqtt free broker for test 
-const char* mqtt_broker = "broker.hivemq.com";
+const char* mqtt_broker = "test.mosquitto.org";
 // broker port
 #define PORT 1883
 // CLient Id
