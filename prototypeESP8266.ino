@@ -49,6 +49,17 @@ long lastMsg = 0;
 char msg[MOVEMENTS];
 int value=0;
 
+//actual position on the board
+//init my position, right inf corner
+int myPosition[2]={9,9};
+// index of the cardinal point of my compass
+int myCompass;
+//cardinal points
+char cardinal[4]={'N','E','S','W'};
+// msg to publish
+String msgPub;
+char charMsg[32];
+
 // led movement
 #define LED_UP D1
 #define LED_RIGHT D2
@@ -88,6 +99,9 @@ void setup_wifi() {
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+
+ //init compass see to North
+ myCompass=0;
 }
 
 //Arrived messages
@@ -120,50 +134,124 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void mov_up(){
-  client.publish("/gamesp/protoAlfaESP8266/executing", "Forward");
+  // X position
+  myPosition[0]=myPosition[0]+steepX(myCompass);
+  // Y position
+  myPosition[1]=myPosition[1]+steepY(myCompass);
+  //Create the message to publish
+  createMsg('F');
+  client.publish("/gamesp/protoAlfaESP8266/executing",charMsg);
   analogWrite(LED_UP, 125);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 0);
   analogWrite(LED_DOWN, 0);
-  delay(1000);
+  delay(2000);
   
 }
 void mov_down(){
-  client.publish("/gamesp/protoAlfaESP8266/executing", "Back");
+  // X position
+  myPosition[0]=myPosition[0]-steepX(myCompass);
+  // Y position
+  myPosition[1]=myPosition[1]-steepY(myCompass);
+  createMsg('B');
+  client.publish("/gamesp/protoAlfaESP8266/executing",charMsg);
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 0);
   analogWrite(LED_DOWN, 125);
-  delay(1000);
-  //
+  delay(2000);
 }
 void mov_right(){
-  client.publish("/gamesp/protoAlfaESP8266/executing", "Right");
+  // change compass 90 degrees right
+  if (myCompass == 3) {
+    //West to North
+    myCompass = 0;
+  } else {
+    myCompass = myCompass + 1;
+  }
+
+  createMsg('R');
+  client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 125);
   analogWrite(LED_LEFT, 0);
   analogWrite(LED_DOWN, 0);
-  delay(1000);
-  //
-  
+  delay(2000);
 }
 void mov_left(){
-  client.publish("/gamesp/protoAlfaESP8266/executing", "Left");
+  // change compass 90 degrees left
+  if (myCompass == 0) {
+    //West to North to West
+    myCompass = 3;
+  } else {
+    myCompass = myCompass - 1;
+  }
+
+  createMsg('L');
+  client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 125);
   analogWrite(LED_DOWN, 0);
-  delay(1000);
+  delay(2000);
+}
+
+//movement X axis
+int steepX(int myCompass){
+  switch (myCompass) {
+    //North
+    case 0:
+      return -1;
+    //East
+    case 1:
+      return 0;
+    //South
+    case 2:
+      return +1;
+    //West
+    case 3:
+      return 0;
+    default:
+      return 0;
+  }
+  
+}
+
+//movement Y axis
+int steepY(int myCompass){
+ switch (myCompass) {
+    //North
+    case 0:
+      return 0;
+    //East
+    case 1:
+      return +1;
+    //South
+    case 2:
+      return 0;
+    //West
+    case 3:
+      return -1;
+    default:
+      return 0;
+  }
+  
 }
 
 void mov_stop(){
-  client.publish("/gamesp/protoAlfaESP8266/executing", "SLEEP");
+  snprintf(charMsg,32,"{Mov:S,X:%d,Y:%d,Compass:%c}",myPosition[0],myPosition[1],cardinal[myCompass]);
+  client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 0);
   analogWrite(LED_DOWN, 0);
 }
+
+void createMsg(char myMov){
+
+  snprintf(charMsg,32,"{Mov:%c,X:%d,Y:%d,Compass:%c}",myMov,myPosition[0],myPosition[1],cardinal[myCompass]);
   
+}
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
@@ -196,9 +284,9 @@ void loop() {
     reconnect();
   }
   client.loop();
-  // publish every 2sg ON
+  // publish every 5sg ON
   long now = millis();
-  if (now - lastMsg > 2000) {
+  if (now - lastMsg > 5000) {
     lastMsg = now;
     ++value;
     snprintf (msg, 75, "ON #%ld", value);
