@@ -115,7 +115,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   //finish execute
   free(copy_commands);
-  client.publish("/gamesp/protoAlfaESP8266/executing", "SLEEP");  
+  // stop movement
+  mov_stop();
 }
 
 void mov_up(){
@@ -153,6 +154,14 @@ void mov_left(){
   analogWrite(LED_LEFT, 125);
   analogWrite(LED_DOWN, 0);
   delay(1000);
+}
+
+void mov_stop(){
+  client.publish("/gamesp/protoAlfaESP8266/executing", "SLEEP");
+  analogWrite(LED_UP, 0);
+  analogWrite(LED_RIGHT, 0);
+  analogWrite(LED_LEFT, 0);
+  analogWrite(LED_DOWN, 0);
 }
   
 void reconnect() {
