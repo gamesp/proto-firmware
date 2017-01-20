@@ -1,22 +1,22 @@
 /*
-ESP8266 MQTT conection
-Use of the pubsub library
+  ESP8266 MQTT conection
+  Use of the pubsub library
 */
 
 /*
- * Copyright 2016 Damian Nogueiras
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
+   Copyright 2016 Damian Nogueiras
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU General Public License for more details.
+   You should have received a copy of the GNU General Public License
+   along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
@@ -26,10 +26,10 @@ Use of the pubsub library
 // values conection wifi local
 // defined in WifiConfig.h
 /*
-const char* ssid = ".....";
-const char* password = ".....";
+  const char* ssid = ".....";
+  const char* password = ".....";
 */
-// mqtt free broker for test 
+// mqtt free broker for test
 const char* mqtt_broker = "test.mosquitto.org";
 // broker port
 #define PORT 1883
@@ -47,15 +47,15 @@ long lastMsg = 0;
 #define MOVEMENTS 10
 // total of movements
 char msg[MOVEMENTS];
-int value=0;
+int value = 0;
 
 //actual position on the board
 //init my position, right inf corner
-int myPosition[2]={9,9};
+int myPosition[2] = {9, 9};
 // index of the cardinal point of my compass
 int myCompass;
 //cardinal points
-char cardinal[4]={'N','E','S','W'};
+char cardinal[4] = {'N', 'E', 'S', 'W'};
 // msg to publish
 String msgPub;
 char charMsg[32];
@@ -100,8 +100,8 @@ void setup_wifi() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
- //init compass see to North
- myCompass=0;
+  //init compass see to North
+  myCompass = 0;
 }
 
 //Arrived messages
@@ -111,22 +111,34 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print(topic);
   Serial.print("]:");
 
-  // Necessary because de publisher buffer it's the same of subscribe 
+  // Necessary because de publisher buffer it's the same of subscribe
   // Allocate memory for the payload copy
   byte* copy_commands = (byte*)malloc(length);
-  // Copy the payload to the new buffer 
-  memcpy(copy_commands,payload,length);
+  // Copy the payload to the new buffer
+  memcpy(copy_commands, payload, length);
   for (int i = 0; i < length; i++) {
-      Serial.print((char)copy_commands[i]);
-      if ((char)copy_commands[i]=='F') {      
-        mov_up();     
-      } else if ((char)copy_commands[i]=='R') {
+    Serial.print((char)copy_commands[i]);
+    // action for different commands 
+    switch ((char)copy_commands[i]) {
+      case 'F':
+        mov_up();
+        break;
+      case 'R':
         mov_right();
-      } else if ((char)copy_commands[i]=='L') {
+        break;
+      case 'L':
         mov_left();
-      } else if ((char)copy_commands[i]=='B') {
+        break;
+      case 'B':
         mov_down();
-      }
+        break;
+      // stop  
+      case 'S':
+        mov_stop();
+        break;
+      
+    }
+
   }
   //finish execute
   free(copy_commands);
@@ -134,35 +146,35 @@ void callback(char* topic, byte* payload, unsigned int length) {
   mov_stop();
 }
 
-void mov_up(){
+void mov_up() {
   // X position
-  myPosition[0]=myPosition[0]+steepX(myCompass);
+  myPosition[0] = myPosition[0] + steepX(myCompass);
   // Y position
-  myPosition[1]=myPosition[1]+steepY(myCompass);
+  myPosition[1] = myPosition[1] + steepY(myCompass);
   //Create the message to publish
   createMsg('F');
-  client.publish("/gamesp/protoAlfaESP8266/executing",charMsg);
+  client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
   analogWrite(LED_UP, 125);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 0);
   analogWrite(LED_DOWN, 0);
   delay(2000);
-  
+
 }
-void mov_down(){
+void mov_down() {
   // X position
-  myPosition[0]=myPosition[0]-steepX(myCompass);
+  myPosition[0] = myPosition[0] - steepX(myCompass);
   // Y position
-  myPosition[1]=myPosition[1]-steepY(myCompass);
+  myPosition[1] = myPosition[1] - steepY(myCompass);
   createMsg('B');
-  client.publish("/gamesp/protoAlfaESP8266/executing",charMsg);
+  client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 0);
   analogWrite(LED_DOWN, 125);
   delay(2000);
 }
-void mov_right(){
+void mov_right() {
   // change compass 90 degrees right
   if (myCompass == 3) {
     //West to North
@@ -179,7 +191,7 @@ void mov_right(){
   analogWrite(LED_DOWN, 0);
   delay(2000);
 }
-void mov_left(){
+void mov_left() {
   // change compass 90 degrees left
   if (myCompass == 0) {
     //West to North to West
@@ -198,7 +210,7 @@ void mov_left(){
 }
 
 //movement X axis
-int steepX(int myCompass){
+int steepX(int myCompass) {
   switch (myCompass) {
     //North
     case 0:
@@ -215,12 +227,12 @@ int steepX(int myCompass){
     default:
       return 0;
   }
-  
+
 }
 
 //movement Y axis
-int steepY(int myCompass){
- switch (myCompass) {
+int steepY(int myCompass) {
+  switch (myCompass) {
     //North
     case 0:
       return 0;
@@ -236,10 +248,10 @@ int steepY(int myCompass){
     default:
       return 0;
   }
-  
+
 }
 
-void mov_stop(){
+void mov_stop() {
   createMsg('S');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
   analogWrite(LED_UP, 0);
@@ -248,15 +260,15 @@ void mov_stop(){
   analogWrite(LED_DOWN, 0);
 }
 
-void createMsg(char myMov){
-  snprintf(charMsg,32,"{Mov:%c,X:%d,Y:%d,Compass:%c}",myMov,myPosition[0],myPosition[1],cardinal[myCompass]); 
+void createMsg(char myMov) {
+  snprintf(charMsg, 32, "{Mov:%c,X:%d,Y:%d,Compass:%c}", myMov, myPosition[0], myPosition[1], cardinal[myCompass]);
 }
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect, with will message state:OFF case disconnect
-    if (client.connect("protoAlfaESP8266",NULL,NULL,"/gamesp/protoAlfaESP8266/state",2,false,"OFF")) {
+    if (client.connect("protoAlfaESP8266", NULL, NULL, "/gamesp/protoAlfaESP8266/state", 2, false, "OFF")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
       Serial.println("ON");
