@@ -38,7 +38,7 @@ const char* mqtt_broker = "test.mosquitto.org";
 #define TOPIC_ROOT gamesp
 #define TOPIC_STATE state
 #define TOPIC_EXEC executing
-#define TOPIC_COMM commands
+#define TOPIC_COMM commandss
 
 WiFiClient gamespClient;
 PubSubClient client(gamespClient);
@@ -110,6 +110,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("]:");
+
   // Necessary because de publisher buffer it's the same of subscribe 
   // Allocate memory for the payload copy
   byte* copy_commands = (byte*)malloc(length);
@@ -239,7 +240,7 @@ int steepY(int myCompass){
 }
 
 void mov_stop(){
-  snprintf(charMsg,32,"{Mov:S,X:%d,Y:%d,Compass:%c}",myPosition[0],myPosition[1],cardinal[myCompass]);
+  createMsg('S');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 0);
@@ -248,9 +249,7 @@ void mov_stop(){
 }
 
 void createMsg(char myMov){
-
-  snprintf(charMsg,32,"{Mov:%c,X:%d,Y:%d,Compass:%c}",myMov,myPosition[0],myPosition[1],cardinal[myCompass]);
-  
+  snprintf(charMsg,32,"{Mov:%c,X:%d,Y:%d,Compass:%c}",myMov,myPosition[0],myPosition[1],cardinal[myCompass]); 
 }
 void reconnect() {
   // Loop until we're reconnected
@@ -263,8 +262,9 @@ void reconnect() {
       Serial.println("ON");
       client.publish("/gamesp/protoAlfaESP8266/state", "ON");
       // publish not executing anything
-      client.publish("/gamesp/protoAlfaESP8266/executing", "SLEEP");
-      Serial.println("SLEEP");
+      createMsg('S');
+      client.publish("/gamesp/protoAlfaESP8266/executing", msg);
+      Serial.println(msg);
       // ... and resubscribe
       client.subscribe("/gamesp/protoAlfaESP8266/commands");
       // ... and resubscribe my state for debug
