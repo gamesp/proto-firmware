@@ -70,24 +70,33 @@ int myPosition[2] = {9, 9};
 int myCompass;
 //cardinal points
 char cardinal[4] = {'N', 'E', 'S', 'W'};
+//cardinal points
+String commands = "SFLBR";
 // msg to publish
 String msgPub;
 char charMsg[32];
 
 // led movement
-#define LED_UP D1
-#define LED_RIGHT D2
-#define LED_LEFT D3
-#define LED_DOWN D4
+#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
+#include <FastLED.h>
+// four commands and one to information
+#define NUM_LEDS 5
+// data pin of strip
+#define DATA_PIN 2
+CRGB leds[NUM_LEDS];
+#define LED_TYPE    WS2812
+#define COLOR_ORDER GRB
+#define MAX_BRIGHTNESS 64
+
 
 void setup() {
   //debug
   Serial.begin(115200);
-  //Initialize the rgb led pin as an output
-  pinMode(LED_UP, OUTPUT);
-  pinMode(LED_RIGHT, OUTPUT);
-  pinMode(LED_LEFT, OUTPUT);
-  pinMode(LED_DOWN, OUTPUT);
+  //Initialize the rgb strip
+  FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
+  FastLED.setBrightness(MAX_BRIGHTNESS);
+  FastLED.clear();
+
   // join the i2c bus like a master
   //Wire.begin();
 
@@ -109,8 +118,9 @@ void setup_wifi() {
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
-    delay(100);
+    blinkLed(0,CRGB::Aquamarine,30);
     Serial.print(".");
+    delay(500);
   }
   Serial.println("");
   Serial.println("WiFi connected");
@@ -127,6 +137,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("]:");
+  // blink information bit
+  blinkLed(0, CRGB::Blue, 50);
 
   // Necessary because de publisher buffer it's the same of subscribe
   // Allocate memory for the payload copy
@@ -169,13 +181,12 @@ void mov_up() {
   //Create the message to publish
   createMsg('F');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
-  // send movement forward to i2c
-  i2c('F',2);
-  analogWrite(LED_UP, 125);
-  analogWrite(LED_RIGHT, 0);
-  analogWrite(LED_LEFT, 0);
-  analogWrite(LED_DOWN, 0);
-  delay(1000);
+  // turn on led
+  ledMov('F',true);
+  // send movement right to i2c
+  i2c('F',50);
+  // turn off led
+  ledMov('F',false);
 
 }
 void mov_down() {
@@ -185,13 +196,12 @@ void mov_down() {
   myPosition[1] = myPosition[1] - steepY(myCompass);
   createMsg('B');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
-  // send movement back to i2c
-  i2c('B',2);
-  analogWrite(LED_UP, 0);
-  analogWrite(LED_RIGHT, 0);
-  analogWrite(LED_LEFT, 0);
-  analogWrite(LED_DOWN, 125);
-  delay(1000);
+  // turn on led
+  ledMov('B',true);
+  // send movement right to i2c
+  i2c('B',50);
+  // turn off led
+  ledMov('B',false);
 }
 void mov_right() {
   // change compass 90 degrees right
@@ -204,13 +214,12 @@ void mov_right() {
 
   createMsg('R');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
+  // turn on led
+  ledMov('R',true);
   // send movement right to i2c
-  i2c('R',2);
-  analogWrite(LED_UP, 0);
-  analogWrite(LED_RIGHT, 125);
-  analogWrite(LED_LEFT, 0);
-  analogWrite(LED_DOWN, 0);
-  delay(1000);
+  i2c('R',50);
+  // turn off led
+  ledMov('R',false);
 }
 void mov_left() {
   // change compass 90 degrees left
@@ -222,13 +231,12 @@ void mov_left() {
   }
   createMsg('L');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
-  // send movement left to i2c
-  i2c('L',2);
-  analogWrite(LED_UP, 0);
-  analogWrite(LED_RIGHT, 0);
-  analogWrite(LED_LEFT, 125);
-  analogWrite(LED_DOWN, 0);
-  delay(1000);
+  // turn on led
+  ledMov('L',true);
+  // send movement right to i2c
+  i2c('L',50);
+  // turn off led
+  ledMov('L',false);
 }
 
 //movement X axis
@@ -276,10 +284,7 @@ void mov_stop() {
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
   // send movement stop to i2c
   i2c('S',0);
-  analogWrite(LED_UP, 0);
-  analogWrite(LED_RIGHT, 0);
-  analogWrite(LED_LEFT, 0);
-  analogWrite(LED_DOWN, 0);
+  // turn on led
 }
 
 // create a msg to publish
@@ -287,6 +292,24 @@ void createMsg(char myMov) {
   snprintf(charMsg, 40, "{\"Mov\":\"%c\",\"X\":%d,\"Y\":%d,\"Compass\":\"%c\"}", myMov, myPosition[0], myPosition[1], cardinal[myCompass]);
 }
 
+void blinkLed(int ledNumber, CRGB color, int delay) {
+  leds[ledNumber] = color;
+  FastLED.show();
+  FastLED.delay(delay);
+  leds[ledNumber] = CRGB::Black;
+  FastLED.show();
+}
+
+void ledMov (char mov, boolean on) {
+  int ledNumber = commands.indexOf(mov);
+  if (on) {
+    leds[ledNumber] = CRGB::Green;
+    FastLED.show();
+  } else {
+    leds[ledNumber] = CRGB::Black;
+    FastLED.show();
+  }
+}
 // send to bus i2c de pattern
 void i2c(char direction, int steeps){
   Serial.println();
@@ -377,5 +400,6 @@ void loop() {
     ++value;
     snprintf (msg, 75, "ON #%ld", value);
     client.publish("/gamesp/protoAlfaESP8266/state", msg);
+    blinkLed(0, CRGB::Yellow, 33);
   }
 }
