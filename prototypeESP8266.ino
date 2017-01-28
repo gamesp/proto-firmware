@@ -118,7 +118,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   memcpy(copy_commands, payload, length);
   for (int i = 0; i < length; i++) {
     Serial.print((char)copy_commands[i]);
-    // action for different commands 
+    // action for different commands
     switch ((char)copy_commands[i]) {
       case 'F':
         mov_up();
@@ -132,11 +132,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
       case 'B':
         mov_down();
         break;
-      // stop  
+      // stop
       case 'S':
         mov_stop();
         break;
-      
+
     }
 
   }
@@ -261,7 +261,7 @@ void mov_stop() {
 }
 
 void createMsg(char myMov) {
-  snprintf(charMsg, 32, "{Mov:%c,X:%d,Y:%d,Compass:%c}", myMov, myPosition[0], myPosition[1], cardinal[myCompass]);
+  snprintf(charMsg, 40, "{\"Mov\":\"%c\",\"X\":%d,\"Y\":%d,\"Compass\":\"%c\"}", myMov, myPosition[0], myPosition[1], cardinal[myCompass]);
 }
 void reconnect() {
   // Loop until we're reconnected
