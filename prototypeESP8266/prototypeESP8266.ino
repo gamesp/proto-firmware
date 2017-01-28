@@ -50,13 +50,9 @@ const char* mqtt_broker = "test.mosquitto.org";
 const static byte step_patternFB[] = {
     B00010001, B00110011, B00100010, B01100110, B01000100, B11001100, B10001000, B10011001
 };
-const static byte step_patternL[] = {
-    B00010000, B00110000, B00100000, B01100000, B01000000, B11000000, B10000000, B10010000
+const static byte step_patternLR[] = {
+    B00011001, B00111000, B00101100, B01100100, B01000110, B11000010, B10000011, B10010001
 };
-const static byte step_patternR[] = {
-    B00000001, B00000011, B00000010, B00000110, B00000100, B00001100, B00001000, B00001001
-};
-
 
 WiFiClient gamespClient;
 PubSubClient client(gamespClient);
@@ -278,7 +274,8 @@ int steepY(int myCompass) {
 void mov_stop() {
   createMsg('S');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
-  //Wire.send();
+  // send movement stop to i2c
+  i2c('S',0);
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 0);
@@ -317,7 +314,7 @@ void i2c(char direction, int steeps){
       case 'L':
       for (int i=0; i<steeps; i++) {
         for (int index=0; index<8; index++){
-          Serial.println(step_patternL[index],BIN);
+          Serial.println(step_patternLR[index],BIN);
           //Wire.send();
           delay(5);
         }
@@ -325,13 +322,18 @@ void i2c(char direction, int steeps){
       break;
       case 'R':
       for (int i=0; i<steeps; i++) {
-        for (int index=0; index<8; index++){
-          Serial.println(step_patternR[index],BIN);
+        int index=7;
+        do {
+          Serial.println(step_patternLR[index],BIN);
           //Wire.send();
           delay(5);
-        }
+          index--;
+        } while (index>-1);
       };
       break;
+      default :
+      Serial.println(B00000000,BIN);
+      //Wire.send();
   }
 }
 
