@@ -94,7 +94,7 @@ void setup() {
   pinMode(LED_DOWN, OUTPUT);
   // join the i2c bus like a master
   //Wire.begin();
-  
+
   //wifi connectin
   setup_wifi();
   //mqtt client configuratin
@@ -139,7 +139,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   memcpy(copy_commands, payload, length);
   for (int i = 0; i < length; i++) {
     Serial.print((char)copy_commands[i]);
-    // action for different commands 
+    // action for different commands
     switch ((char)copy_commands[i]) {
       case 'F':
         mov_up();
@@ -153,10 +153,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
       case 'B':
         mov_down();
         break;
-      // stop  
+      // stop
       case 'S':
         mov_stop();
-        break;    
+        break;
     }
   }
   //finish execute
@@ -287,7 +287,7 @@ void mov_stop() {
 
 // create a msg to publish
 void createMsg(char myMov) {
-  snprintf(charMsg, 32, "{Mov:%c,X:%d,Y:%d,Compass:%c}", myMov, myPosition[0], myPosition[1], cardinal[myCompass]);
+  snprintf(charMsg, 40, "{\"Mov\":\"%c\",\"X\":%d,\"Y\":%d,\"Compass\":\"%c\"}", myMov, myPosition[0], myPosition[1], cardinal[myCompass]);
 }
 
 // send to bus i2c de pattern
@@ -323,7 +323,7 @@ void i2c(char direction, int steeps){
         }
       };
       break;
-      case 'R':   
+      case 'R':
       for (int i=0; i<steeps; i++) {
         for (int index=0; index<8; index++){
           Serial.println(step_patternR[index],BIN);
