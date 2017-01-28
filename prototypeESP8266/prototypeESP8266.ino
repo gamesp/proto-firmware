@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 /*
   ESP8266 MQTT conection
   Use of the pubsub library
@@ -20,6 +22,8 @@
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <Wire.h>
+
 // wifi credentials
 #include "WifiConfig.h"
 
@@ -39,6 +43,20 @@ const char* mqtt_broker = "test.mosquitto.org";
 #define TOPIC_STATE state
 #define TOPIC_EXEC executing
 #define TOPIC_COMM commandss
+
+// the address for the motors at the bus i2c
+#define MOTORS 1
+
+const static byte step_patternFB[] = {
+    B00010001, B00110011, B00100010, B01100110, B01000100, B11001100, B10001000, B10011001
+};
+const static byte step_patternL[] = {
+    B00010000, B00110000, B00100000, B01100000, B01000000, B11000000, B10000000, B10010000
+};
+const static byte step_patternR[] = {
+    B00000001, B00000011, B00000010, B00000110, B00000100, B00001100, B00001000, B00001001
+};
+
 
 WiFiClient gamespClient;
 PubSubClient client(gamespClient);
@@ -74,6 +92,9 @@ void setup() {
   pinMode(LED_RIGHT, OUTPUT);
   pinMode(LED_LEFT, OUTPUT);
   pinMode(LED_DOWN, OUTPUT);
+  // join the i2c bus like a master
+  //Wire.begin();
+  
   //wifi connectin
   setup_wifi();
   //mqtt client configuratin
@@ -135,10 +156,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
       // stop  
       case 'S':
         mov_stop();
-        break;
-      
+        break;    
     }
-
   }
   //finish execute
   free(copy_commands);
@@ -154,11 +173,13 @@ void mov_up() {
   //Create the message to publish
   createMsg('F');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
+  // send movement forward to i2c
+  i2c('F',2);
   analogWrite(LED_UP, 125);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 0);
   analogWrite(LED_DOWN, 0);
-  delay(2000);
+  delay(1000);
 
 }
 void mov_down() {
@@ -168,11 +189,13 @@ void mov_down() {
   myPosition[1] = myPosition[1] - steepY(myCompass);
   createMsg('B');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
+  // send movement back to i2c
+  i2c('B',2);
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 0);
   analogWrite(LED_DOWN, 125);
-  delay(2000);
+  delay(1000);
 }
 void mov_right() {
   // change compass 90 degrees right
@@ -185,11 +208,13 @@ void mov_right() {
 
   createMsg('R');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
+  // send movement right to i2c
+  i2c('R',2);
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 125);
   analogWrite(LED_LEFT, 0);
   analogWrite(LED_DOWN, 0);
-  delay(2000);
+  delay(1000);
 }
 void mov_left() {
   // change compass 90 degrees left
@@ -199,14 +224,15 @@ void mov_left() {
   } else {
     myCompass = myCompass - 1;
   }
-
   createMsg('L');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
+  // send movement left to i2c
+  i2c('L',2);
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 125);
   analogWrite(LED_DOWN, 0);
-  delay(2000);
+  delay(1000);
 }
 
 //movement X axis
@@ -227,7 +253,6 @@ int steepX(int myCompass) {
     default:
       return 0;
   }
-
 }
 
 //movement Y axis
@@ -248,21 +273,68 @@ int steepY(int myCompass) {
     default:
       return 0;
   }
-
 }
 
 void mov_stop() {
   createMsg('S');
   client.publish("/gamesp/protoAlfaESP8266/executing", charMsg);
+  //Wire.send();
   analogWrite(LED_UP, 0);
   analogWrite(LED_RIGHT, 0);
   analogWrite(LED_LEFT, 0);
   analogWrite(LED_DOWN, 0);
 }
 
+// create a msg to publish
 void createMsg(char myMov) {
   snprintf(charMsg, 32, "{Mov:%c,X:%d,Y:%d,Compass:%c}", myMov, myPosition[0], myPosition[1], cardinal[myCompass]);
 }
+
+// send to bus i2c de pattern
+void i2c(char direction, int steeps){
+  Serial.println();
+  switch (direction) {
+    case 'F':
+      for (int i=0; i<steeps; i++) {
+        for (int index=0; index<8; index++){
+          Serial.println(step_patternFB[index],BIN);
+          //Wire.send();
+          delay(5);
+        }
+      };
+      break;
+    case 'B':
+      for (int i=0; i<steeps; i++) {
+        int index=7;
+        do {
+          Serial.println(step_patternFB[index],BIN);
+          //Wire.send();
+          delay(5);
+          index--;
+        } while (index>-1);
+      };
+      break;
+      case 'L':
+      for (int i=0; i<steeps; i++) {
+        for (int index=0; index<8; index++){
+          Serial.println(step_patternL[index],BIN);
+          //Wire.send();
+          delay(5);
+        }
+      };
+      break;
+      case 'R':   
+      for (int i=0; i<steeps; i++) {
+        for (int index=0; index<8; index++){
+          Serial.println(step_patternR[index],BIN);
+          //Wire.send();
+          delay(5);
+        }
+      };
+      break;
+  }
+}
+
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
